@@ -51,6 +51,50 @@ AI-journal-system/
 │   ├── app/
 │   ├── lib/
 │   └── package.json
+├── docker-compose.yml
 ├── package.json
 ├── README.md
 └── ARCHITECTURE.md
+```
+
+## Local Development
+
+1. Install dependencies:
+   - root: `npm install`
+   - frontend: `cd frontend && npm install`
+   - backend (Python): `pip install -r backend/requirements.txt`
+2. Add backend env vars in `backend/.env` (at minimum `GROQ_API_KEY`).
+3. Run both services from repo root:
+
+```bash
+npm run dev
+```
+
+## Deployment (Docker Compose)
+
+1. Create a `.env` file in the repo root:
+
+```env
+GROQ_API_KEY=your_groq_api_key
+# Optional overrides
+BACKEND_URL=http://backend:8000
+CORS_ORIGINS=http://localhost:3000
+```
+
+2. Build and start the stack:
+
+```bash
+./scripts/deploy.sh
+```
+
+(Equivalent manual command: `docker compose up -d --build`.)
+
+3. Access the app:
+   - Frontend: `http://localhost:3000`
+   - Backend health check: `http://localhost:8000/`
+
+4. Stop the deployment:
+
+```bash
+docker compose down
+```

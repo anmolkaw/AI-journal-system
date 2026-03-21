@@ -1,4 +1,5 @@
 import json
+import os
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,11 +13,12 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="AI-Assisted Journal System")
 
+raw_cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+allowed_origins = [origin.strip() for origin in raw_cors_origins.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://ideal-rotary-phone-r4444rxgjw9p2695-3000.app.github.dev",
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
