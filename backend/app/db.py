@@ -6,7 +6,12 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./journal.db")
+# Vercel functions run from a read-only application directory. Use the writable
+# temporary directory when no durable database has been configured explicitly.
+DEFAULT_DATABASE_URL = (
+    "sqlite:////tmp/journal.db" if os.getenv("VERCEL") else "sqlite:///./journal.db"
+)
+DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL)
 
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
