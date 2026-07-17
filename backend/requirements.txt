@@ -1,6 +1,7 @@
-fastapi
-uvicorn[standard]
-sqlalchemy
-pydantic
-python-dotenv
-requests
+fastapi==0.139.2
+uvicorn[standard]==0.51.0
+sqlalchemy==2.0.51
+pydantic==2.13.4
+python-dotenv==1.2.2
+requests==2.34.2
+PyJWT==2.10.1

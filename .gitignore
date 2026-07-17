@@ -13,6 +13,7 @@ backend/.env
 frontend/.env
 frontend/.env.local
 !backend/.env.example
+!.env.example
 
 # Database
 *.db
@@ -26,6 +27,7 @@ frontend/node_modules/
 # Next.js
 .next/
 out/
+.netlify/
 
 # Logs
 *.log

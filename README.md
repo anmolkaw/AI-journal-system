@@ -1,98 +1,92 @@
 # AI-Assisted Journal System
 
-A full-stack journal application for ArvyaX users to store post-session journal entries, analyze emotions using an LLM, and view mental-state insights over time.
+A secure full-stack journal application for storing private reflections, analyzing emotions with a Groq-hosted LLM, and viewing mental-state insights over time.
 
 ## Features
 
-- Create journal entries
-- Retrieve all entries for a user
-- Analyze journal text using a real LLM
-- View aggregated insights:
-  - total entries
-  - top emotion
-  - most used ambience
-  - recent keywords
-- Cache repeated analysis results using text hashing
-- Minimal frontend to create, analyze, and view entries
+- Account registration and login with signed JWT access tokens
+- Password hashing with Python's memory-hard `scrypt` implementation
+- Authenticated, user-isolated journal storage
+- Strict Pydantic validation for journal and authentication inputs
+- Server-controlled LLM analysis: clients send an entry ID, never trusted journal text
+- Emotion, keyword, and summary generation through Groq
+- SHA-256 text-hash caching to avoid repeated LLM calls
+- Per-user insights for entry count, top emotion, ambience, and recent keywords
+- Responsive Next.js frontend with an internal backend proxy
+- Docker Compose deployment with persistent SQLite data and health checks
+- Automated backend tests, linting, frontend build verification, and GitHub Actions CI
 
-## Tech Stack
+## Tech stack
 
-### Backend
-- FastAPI
-- SQLAlchemy
-- SQLite
-- Groq API (LLM)
+| Layer | Technology |
+| --- | --- |
+| Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS 4 |
+| Backend | FastAPI, Pydantic, SQLAlchemy |
+| Database | SQLite locally; PostgreSQL-ready through `DATABASE_URL` |
+| AI | Groq Chat Completions API |
+| Security | JWT, scrypt password hashing, authorization checks |
+| Quality | Pytest, Ruff, ESLint, GitHub Actions |
 
-### Frontend
-- Next.js
-- React
-- Tailwind CSS
+## Local development
 
-## Project Structure
-
-```bash
-AI-journal-system/
-├── backend/
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── db.py
-│   │   ├── models.py
-│   │   ├── schemas.py
-│   │   ├── crud.py
-│   │   ├── llm.py
-│   │   ├── services/
-│   │   │   ├── analysis_service.py
-│   │   │   └── insights_service.py
-│   │   └── utils/
-│   │       └── hash.py
-│   ├── requirements.txt
-│   └── .env
-├── frontend/
-│   ├── app/
-│   ├── lib/
-│   └── package.json
-├── docker-compose.yml
-├── package.json
-├── README.md
-└── ARCHITECTURE.md
-```
-
-## Local Development
-
-1. Install dependencies:
-   - root: `npm install`
-   - frontend: `cd frontend && npm install`
-   - backend (Python): `pip install -r backend/requirements.txt`
-2. Add backend env vars in `backend/.env` (at minimum `GROQ_API_KEY`).
-3. Run both services from repo root:
+Requirements: Node.js 20+, Python 3.11+, and a Groq API key.
 
 ```bash
+cp backend/.env.example backend/.env
+npm install
+cd frontend && npm install && cd ..
+python -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements-dev.txt
 npm run dev
 ```
 
-## Deployment (Docker Compose)
+Set `GROQ_API_KEY` and a strong `JWT_SECRET` in `backend/.env`. The app is available at `http://localhost:3000`, and FastAPI documentation is at `http://localhost:8000/docs`.
 
-1. Create a `.env` file in the repo root:
+The authentication/database schema is intentionally incompatible with databases created by the original unauthenticated prototype. Back up any local journal data and start with a new `journal.db` when upgrading.
 
-```env
-GROQ_API_KEY=your_groq_api_key
-# Optional overrides
-NEXT_PUBLIC_BACKEND_URL=http://backend:8000
-CORS_ORIGINS=http://localhost:3000
-```
-
-2. Build and start the stack:
+## Docker Compose
 
 ```bash
+cp .env.example .env
+# Set GROQ_API_KEY and a random JWT_SECRET of at least 32 characters.
 docker compose up -d --build
 ```
 
-3. Access the app:
-   - Frontend: `http://localhost:3000`
-   - Backend health check: `http://localhost:8000/`
+The frontend runs on port `3000`, the backend on `8000`, and SQLite data persists in the `backend_data` volume at `/data` without hiding application code.
 
-4. Stop the deployment:
+## API
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| POST | `/api/auth/register` | Create an account and receive a token |
+| POST | `/api/auth/login` | Authenticate and receive a token |
+| POST | `/api/journal` | Create a journal entry |
+| GET | `/api/journal` | List the authenticated user's entries |
+| POST | `/api/journal/analyze` | Analyze an owned entry by ID |
+| GET | `/api/journal/insights` | View authenticated-user insights |
+
+Journal endpoints require `Authorization: Bearer <token>`.
+
+## Verification
 
 ```bash
-docker compose down
+cd backend
+pip install -r requirements-dev.txt
+ruff check app tests
+pytest -q
+
+cd ../frontend
+npm ci
+npm run lint
+npm run build
+npm audit --omit=dev
 ```
+
+## Production roadmap
+
+- Replace SQLite with PostgreSQL and add Alembic migrations.
+- Store authentication in secure HTTP-only cookies when frontend and API share a production domain.
+- Move LLM work to a background queue for lower API latency.
+- Add rate limiting, account recovery, journal deletion, audit logging, and encrypted backups.
+- Precompute insights and add observability before scaling horizontally.
