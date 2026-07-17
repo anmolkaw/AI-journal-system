@@ -27,6 +27,7 @@ frontend/node_modules/
 # Next.js
 .next/
 out/
+.netlify/
 
 # Logs
 *.log
