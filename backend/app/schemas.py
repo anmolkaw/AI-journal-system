@@ -1,35 +1,54 @@
-from pydantic import BaseModel
-from typing import List, Optional
+from datetime import datetime
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
-class JournalCreate(BaseModel):
+class StrictModel(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+
+class RegisterRequest(StrictModel):
+    username: str = Field(min_length=3, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
+    password: str = Field(min_length=8, max_length=128)
+
+
+class LoginRequest(RegisterRequest):
+    pass
+
+
+class TokenResponse(BaseModel):
+    accessToken: str
+    tokenType: Literal["bearer"] = "bearer"
     userId: str
-    ambience: str
-    text: str
 
 
-class AnalyzeRequest(BaseModel):
-    text: str
-    entryId: Optional[int] = None
+class JournalCreate(StrictModel):
+    ambience: Literal["forest", "ocean", "mountain"]
+    text: str = Field(min_length=1, max_length=10_000)
+
+
+class AnalyzeRequest(StrictModel):
+    entryId: int = Field(gt=0)
 
 
 class AnalyzeResponse(BaseModel):
     emotion: str
-    keywords: List[str]
+    keywords: list[str]
     summary: str
 
 
-class EntryWithAnalysis(BaseModel):
+class JournalEntryResponse(BaseModel):
     id: int
     userId: str
-    ambience: str
+    ambience: Literal["forest", "ocean", "mountain"]
     text: str
-    createdAt: str
-    analysis: Optional[AnalyzeResponse] = None
+    createdAt: datetime
+    analysis: AnalyzeResponse | None = None
 
 
 class InsightResponse(BaseModel):
     totalEntries: int
-    topEmotion: Optional[str]
-    mostUsedAmbience: Optional[str]
-    recentKeywords: List[str]
+    topEmotion: str | None
+    mostUsedAmbience: str | None
+    recentKeywords: list[str]

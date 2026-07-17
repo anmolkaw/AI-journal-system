@@ -1,5 +1,6 @@
-import os
 import json
+import os
+
 import requests
 from dotenv import load_dotenv
 
@@ -62,13 +63,13 @@ Rules:
 
     try:
         content = data["choices"][0]["message"]["content"]
-    except Exception:
-        raise RuntimeError(f"Unexpected Groq response format: {data}")
+    except Exception as exc:
+        raise RuntimeError(f"Unexpected Groq response format: {data}") from exc
 
     try:
         parsed = json.loads(content)
-    except json.JSONDecodeError:
-        raise RuntimeError(f"Groq did not return valid JSON: {content}")
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Groq did not return valid JSON: {content}") from exc
 
     if not isinstance(parsed, dict):
         raise RuntimeError("LLM response was not a JSON object")

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
+const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
 
 type Context = {
   params: Promise<{ path: string[] }>;
@@ -19,11 +19,13 @@ async function forwardRequest(
     const body =
       method === "GET" || method === "DELETE" ? undefined : await request.text();
 
+    const headers: HeadersInit = { "Content-Type": "application/json" };
+    const authorization = request.headers.get("Authorization");
+    if (authorization) headers.Authorization = authorization;
+
     const response = await fetch(targetUrl, {
       method,
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
       body,
       cache: "no-store",
     });
