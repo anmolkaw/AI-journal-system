@@ -55,6 +55,18 @@ docker compose up -d --build
 
 The frontend runs on port `3000`, the backend on `8000`, and SQLite data persists in the `backend_data` volume at `/data` without hiding application code.
 
+## Vercel deployment
+
+Configure the frontend project with `frontend` as its root directory and set
+`BACKEND_URL` to the deployed backend origin. Configure the backend project with
+`backend` as its root directory and store `GROQ_API_KEY` and `JWT_SECRET` in the
+project environment.
+
+When `DATABASE_URL` is unset, the Vercel backend falls back to SQLite in `/tmp`
+so serverless functions can start successfully. This storage is ephemeral and
+is suitable only for previews or demonstrations. Use a managed PostgreSQL
+connection in `DATABASE_URL` for durable production accounts and journal data.
+
 ## API
 
 | Method | Endpoint | Purpose |
