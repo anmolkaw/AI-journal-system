@@ -17,7 +17,12 @@ JWT_SECRET = os.getenv("JWT_SECRET", "development-only-change-me")
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_MINUTES = int(os.getenv("ACCESS_TOKEN_MINUTES", "1440"))
 
-if os.getenv("ENVIRONMENT") == "production" and len(JWT_SECRET) < 32:
+IS_PRODUCTION = (
+    os.getenv("ENVIRONMENT") == "production"
+    or os.getenv("VERCEL_ENV") == "production"
+)
+
+if IS_PRODUCTION and len(JWT_SECRET) < 32:
     raise RuntimeError("JWT_SECRET must contain at least 32 characters in production")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
