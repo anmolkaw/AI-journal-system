@@ -26,3 +26,18 @@ def test_vercel_preview_can_use_temporary_sqlite():
         resolve_database_url(None, is_vercel=True, vercel_environment="preview")
         == "sqlite:////tmp/journal.db"
     )
+
+
+def test_local_default_and_configured_database_urls():
+    assert (
+        resolve_database_url(None, is_vercel=False, vercel_environment=None)
+        == "sqlite:///./journal.db"
+    )
+    assert (
+        resolve_database_url(
+            "postgres://user:pass@host/app",
+            is_vercel=True,
+            vercel_environment="production",
+        )
+        == "postgresql+psycopg://user:pass@host/app"
+    )

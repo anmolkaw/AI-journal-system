@@ -28,7 +28,7 @@ def get_entries_by_user(db: Session, user_id: str):
     return (
         db.query(JournalEntry)
         .filter(JournalEntry.user_id == user_id)
-        .order_by(JournalEntry.created_at.desc())
+        .order_by(JournalEntry.created_at.desc(), JournalEntry.id.desc())
         .all()
     )
 
@@ -38,7 +38,7 @@ def get_entries_with_analyses(db: Session, user_id: str):
         db.query(JournalEntry, JournalAnalysis)
         .outerjoin(JournalAnalysis, JournalAnalysis.journal_entry_id == JournalEntry.id)
         .filter(JournalEntry.user_id == user_id)
-        .order_by(JournalEntry.created_at.desc())
+        .order_by(JournalEntry.created_at.desc(), JournalEntry.id.desc())
         .all()
     )
 

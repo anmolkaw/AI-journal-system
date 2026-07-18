@@ -40,11 +40,10 @@ async function forwardRequest(
       },
     });
   } catch (error) {
+    console.error("Backend proxy request failed", error);
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Proxy request failed",
-      },
-      { status: 500 }
+      { error: "The journal service is temporarily unavailable" },
+      { status: 502 }
     );
   }
 }

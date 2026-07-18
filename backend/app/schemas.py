@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class StrictModel(BaseModel):
@@ -24,12 +24,25 @@ class TokenResponse(BaseModel):
 
 
 class JournalCreate(StrictModel):
+    userId: str | None = Field(
+        default=None,
+        min_length=3,
+        max_length=64,
+        pattern=r"^[A-Za-z0-9_-]+$",
+    )
     ambience: Literal["forest", "ocean", "mountain"]
     text: str = Field(min_length=1, max_length=10_000)
 
 
 class AnalyzeRequest(StrictModel):
-    entryId: int = Field(gt=0)
+    entryId: int | None = Field(default=None, gt=0)
+    text: str | None = Field(default=None, min_length=1, max_length=10_000)
+
+    @model_validator(mode="after")
+    def require_exactly_one_source(self):
+        if (self.entryId is None) == (self.text is None):
+            raise ValueError("Provide exactly one of entryId or text")
+        return self
 
 
 class AnalyzeResponse(BaseModel):

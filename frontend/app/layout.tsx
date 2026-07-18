@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI-Assisted Journal",
-  description: "Private journaling with AI-powered emotion analysis and insights.",
+  title: "ArvyaX Reflections | AI-Assisted Journal",
+  description: "Private nature-session journaling with structured AI emotion analysis and insights.",
 };
 
 export default function RootLayout({
