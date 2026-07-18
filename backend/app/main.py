@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app import crud, schemas
 from app.db import Base, engine, get_db
+from app.llm import LLMConfigurationError, LLMProviderError
 from app.security import (
     create_access_token,
     get_current_user_id,
@@ -117,6 +118,8 @@ def create_journal(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
+    if payload.userId is not None and payload.userId != user_id:
+        raise HTTPException(status_code=403, detail="userId must match the authenticated user")
     entry = crud.create_journal_entry(
         db=db,
         user_id=user_id,
@@ -151,45 +154,64 @@ def analyze_journal(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
-    entry = crud.get_entry_by_id_for_user(db, payload.entryId, user_id)
-    if not entry:
-        raise HTTPException(status_code=404, detail="Journal entry not found")
+    entry = None
+    ambience = None
+    if payload.entryId is not None:
+        entry = crud.get_entry_by_id_for_user(db, payload.entryId, user_id)
+        if not entry:
+            raise HTTPException(status_code=404, detail="Journal entry not found")
 
-    existing = crud.get_analysis_by_entry_id(db, entry.id)
-    if existing:
-        return serialize_analysis(existing)
+        existing = crud.get_analysis_by_entry_id(db, entry.id)
+        if existing:
+            return serialize_analysis(existing)
 
-    text_hash = hash_text(entry.text)
+        text = entry.text
+        ambience = entry.ambience
+    else:
+        text = payload.text or ""
+
+    text_hash = hash_text(text)
     cached = crud.get_analysis_by_text_hash(db, text_hash)
     if cached:
-        analysis = crud.create_analysis(
-            db=db,
-            journal_entry_id=entry.id,
-            text_hash=text_hash,
-            emotion=cached.emotion,
-            keywords=cached.keywords,
-            summary=cached.summary,
-        )
-        return serialize_analysis(analysis)
+        if entry is not None:
+            cached = crud.create_analysis(
+                db=db,
+                journal_entry_id=entry.id,
+                text_hash=text_hash,
+                emotion=cached.emotion,
+                keywords=cached.keywords,
+                summary=cached.summary,
+            )
+        return serialize_analysis(cached)
 
     try:
-        result = analyze_text(entry.text)
-    except Exception as exc:
-        logger.exception("Journal analysis failed for entry %s", entry.id)
+        result = analyze_text(text, ambience)
+    except LLMConfigurationError as exc:
+        logger.error("Journal analysis configuration error: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail="AI analysis is not configured. Add a valid GROQ_API_KEY.",
+        ) from exc
+    except LLMProviderError as exc:
+        logger.warning("Journal analysis provider error: %s", exc)
         raise HTTPException(
             status_code=502,
             detail="The analysis service is temporarily unavailable",
         ) from exc
 
-    analysis = crud.create_analysis(
-        db=db,
-        journal_entry_id=entry.id,
-        text_hash=text_hash,
-        emotion=result["emotion"],
-        keywords=json.dumps(result["keywords"]),
-        summary=result["summary"],
+    if entry is None:
+        return schemas.AnalyzeResponse(**result)
+
+    return serialize_analysis(
+        crud.create_analysis(
+            db=db,
+            journal_entry_id=entry.id,
+            text_hash=text_hash,
+            emotion=result["emotion"],
+            keywords=json.dumps(result["keywords"]),
+            summary=result["summary"],
+        )
     )
-    return serialize_analysis(analysis)
 
 
 @app.get(
@@ -205,3 +227,36 @@ def get_journal_insights(
     entry_ids = [entry.id for entry in entries]
     analyses = crud.get_analyses_for_entry_ids(db, entry_ids)
     return build_insights(entries, analyses)
+
+
+def require_matching_user(requested_user_id: str, authenticated_user_id: str) -> None:
+    if requested_user_id != authenticated_user_id:
+        raise HTTPException(status_code=403, detail="Cannot access another user's journal")
+
+
+@app.get(
+    "/api/journal/insights/{requested_user_id}",
+    response_model=schemas.InsightResponse,
+    tags=["assignment-compatible"],
+)
+def get_journal_insights_by_user_id(
+    requested_user_id: str,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    require_matching_user(requested_user_id, user_id)
+    return get_journal_insights(db, user_id)
+
+
+@app.get(
+    "/api/journal/{requested_user_id}",
+    response_model=list[schemas.JournalEntryResponse],
+    tags=["assignment-compatible"],
+)
+def get_journal_entries_by_user_id(
+    requested_user_id: str,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    require_matching_user(requested_user_id, user_id)
+    return get_journal_entries(db, user_id)

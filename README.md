@@ -1,6 +1,10 @@
 # AI-Assisted Journal System
 
-A secure full-stack journal application for storing private reflections, analyzing emotions with a Groq-hosted LLM, and viewing mental-state insights over time.
+A secure full-stack take-home project for storing private nature-session reflections, analyzing emotional tone with a Groq-hosted LLM, and viewing patterns over time.
+
+**Live demo:** [ai-journal-system-fawn.vercel.app](https://ai-journal-system-fawn.vercel.app)
+
+The implementation deliberately goes beyond the assignment's minimum: it preserves the requested API shapes while adding authentication, user isolation, strict structured LLM output, durable PostgreSQL storage, analysis caching, and CI. See [ASSIGNMENT_REVIEW.md](ASSIGNMENT_REVIEW.md) for the requirement-by-requirement audit and [ARCHITECTURE.md](ARCHITECTURE.md) for design trade-offs and scaling answers.
 
 ## Features
 
@@ -9,7 +13,8 @@ A secure full-stack journal application for storing private reflections, analyzi
 - Authenticated, user-isolated journal storage
 - Strict Pydantic validation for journal and authentication inputs
 - Server-controlled LLM analysis: clients send an entry ID, never trusted journal text
-- Emotion, keyword, and summary generation through Groq
+- Schema-constrained emotion, keyword, and summary generation through Groq
+- Controlled emotion taxonomy and non-diagnostic wellness prompt
 - SHA-256 text-hash caching to avoid repeated LLM calls
 - Per-user insights for entry count, top emotion, ambience, and recent keywords
 - Responsive Next.js frontend with an internal backend proxy
@@ -23,7 +28,7 @@ A secure full-stack journal application for storing private reflections, analyzi
 | Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS 4 |
 | Backend | FastAPI, Pydantic, SQLAlchemy |
 | Database | SQLite locally; PostgreSQL-ready through `DATABASE_URL` |
-| AI | Groq Chat Completions API |
+| AI | Groq Chat Completions API, GPT-OSS 20B structured output |
 | Security | JWT, scrypt password hashing, authorization checks |
 | Quality | Pytest, Ruff, ESLint, GitHub Actions |
 
@@ -41,7 +46,7 @@ pip install -r backend/requirements-dev.txt
 npm run dev
 ```
 
-Set `GROQ_API_KEY` and a strong `JWT_SECRET` in `backend/.env`. The app is available at `http://localhost:3000`, and FastAPI documentation is at `http://localhost:8000/docs`.
+Set a current `GROQ_API_KEY` and a strong `JWT_SECRET` in `backend/.env`. `GROQ_MODEL` defaults to `openai/gpt-oss-20b` and may be overridden. The app is available at `http://localhost:3000`, and FastAPI documentation is at `http://localhost:8000/docs`.
 
 The authentication/database schema is intentionally incompatible with databases created by the original unauthenticated prototype. Back up any local journal data and start with a new `journal.db` when upgrading.
 
@@ -77,8 +82,19 @@ SQLite when `DATABASE_URL` is unset.
 | GET | `/api/journal` | List the authenticated user's entries |
 | POST | `/api/journal/analyze` | Analyze an owned entry by ID |
 | GET | `/api/journal/insights` | View authenticated-user insights |
+| GET | `/api/journal/{userId}` | Assignment-compatible authorized alias |
+| GET | `/api/journal/insights/{userId}` | Assignment-compatible authorized alias |
 
-Journal endpoints require `Authorization: Bearer <token>`.
+Journal endpoints require `Authorization: Bearer <token>`. The analysis endpoint accepts exactly one of `{"entryId": 42}` or the assignment-compatible `{"text": "..."}`. The UI uses `entryId` so the backend—not the browser—selects the stored text.
+
+## Interview demo path
+
+1. Register two users and show that one cannot read the other's journal.
+2. Save a nature-session reflection and analyze it.
+3. Point out the controlled emotion label, grounded keyword chips, and neutral summary.
+4. Save the same text in another entry and show the cached response path.
+5. Open `/docs` to discuss typed contracts, compatibility routes, and error responses.
+6. Use `ARCHITECTURE.md` to discuss the 100k-user, LLM-cost, cache, and privacy trade-offs.
 
 ## Verification
 
@@ -86,13 +102,18 @@ Journal endpoints require `Authorization: Bearer <token>`.
 cd backend
 pip install -r requirements-dev.txt
 ruff check app tests
-pytest -q
+pytest -q --cov=app --cov-report=term-missing --cov-fail-under=85
 
 cd ../frontend
 npm ci
 npm run lint
 npm run build
-npm audit --omit=dev
+npm audit
+
+# With both local services running, or pass a deployed proxy URL:
+cd ..
+./scripts/smoke-test.sh
+./scripts/smoke-test.sh https://your-frontend.example/api/proxy
 ```
 
 ## Production roadmap

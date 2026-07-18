@@ -23,7 +23,7 @@ jobs:
           cache-dependency-path: backend/requirements-dev.txt
       - run: pip install -r requirements-dev.txt
       - run: ruff check app tests
-      - run: pytest -q
+      - run: pytest -q --cov=app --cov-report=term-missing --cov-fail-under=85
 
   frontend:
     runs-on: ubuntu-latest
