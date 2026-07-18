@@ -62,10 +62,10 @@ Configure the frontend project with `frontend` as its root directory and set
 `backend` as its root directory and store `GROQ_API_KEY` and `JWT_SECRET` in the
 project environment.
 
-When `DATABASE_URL` is unset, the Vercel backend falls back to SQLite in `/tmp`
-so serverless functions can start successfully. This storage is ephemeral and
-is suitable only for previews or demonstrations. Use a managed PostgreSQL
-connection in `DATABASE_URL` for durable production accounts and journal data.
+Production requires a managed PostgreSQL connection in `DATABASE_URL`; the
+backend refuses to start without one so accounts and journals cannot silently
+fall back to disposable storage. Local development and Vercel previews may use
+SQLite when `DATABASE_URL` is unset.
 
 ## API
 
@@ -97,7 +97,7 @@ npm audit --omit=dev
 
 ## Production roadmap
 
-- Replace SQLite with PostgreSQL and add Alembic migrations.
+- Add Alembic migrations for future PostgreSQL schema changes.
 - Store authentication in secure HTTP-only cookies when frontend and API share a production domain.
 - Move LLM work to a background queue for lower API latency.
 - Add rate limiting, account recovery, journal deletion, audit logging, and encrypted backups.
